@@ -9,94 +9,64 @@ import multiprocessing
 from multiprocessing import Process
 import time
 
+chnum=3
+samples=50000
+# command line: ipcrm --all=msg
 
+# init c lib
 mcp3008=ctypes.cdll.LoadLibrary("./mcp3008.so")
-
-
-
 init=mcp3008.init
-getListenerData=mcp3008.getListenerData
-getListenerData.restype=ctypes.POINTER(ctypes.c_int32)
-
-ArrayType = ctypes.c_int32*50000*3
-
-
-
 listener=mcp3008.listener
 detect=mcp3008.detect
+freeme=mcp3008.freeme
+getListenerData=mcp3008.getListenerData
+#c return type
+getListenerData.restype=ctypes.POINTER(ctypes.c_int32)
 
-DataBuf=(ctypes.c_int*50000*3)()
-DataBuf_point=ctypes.cast(DataBuf, ctypes.POINTER(ctypes.c_int))
 
-#ipcrm --all=msg
+
+
 
 def plot():
     
     print("\nstart getListenerData")
     pointer=getListenerData()
     print("pointer:",pointer.contents)
+    # pointer to c memory array 
+    ArrayType = ctypes.c_int32*samples*chnum
     array_pointer = ctypes.cast(pointer, ctypes.POINTER(ArrayType))
     data= np.frombuffer(array_pointer.contents,dtype=np.int32)
-    res=np.reshape(data,(3,50000)) 
+    
+    #data struct [ch][samples]
+    res=np.reshape(data,(chnum,samples)) 
     print(data)
     print("start plot")
     
-    
-    plt.figure(figsize=(20,10))
-    plt.subplot(3, 1, 1)
-    plt.plot(range(len(res[0])), res[0])
-    plt.title('ch1')
-    #plt.ylim((0,1030))
-    
-    plt.subplot(3, 1, 2)
-    plt.plot(range(len(res[1])), res[1])
-    plt.title('ch2')
-    #plt.ylim((0,1030))
-    plt.subplot(3, 1, 3)
-    plt.plot(range(len(res[2])), res[2])
-    plt.title('ch3')
-    #plt.ylim((0,1030))
    
+    for i in range(chnum):
+        plt.figure(figsize=(20,10))
+        plt.subplot(chnum, 1, i+1)
+        plt.plot(range(len(res[i])), res[i])
+        plt.title('ch{}'.format(i))
+        #plt.ylim((0,1030))
+    
     plt.savefig(datetime.datetime.now().isoformat()+".jpeg")
     plt.clf()  
+    freeme(pointer)
 
 
 init()
 
-'''
-thread2=Process(target=mcp3008.listener,args=(DataBuf_point,))
-thread2.start()
-thread2.join()
 
-thread1=threading.Thread(target=mcp3008.detect)
-thread1.start()
-
-
-'''
-thread3=Process(target=plot)
-
-#thread3.start()
-
-listener(DataBuf_point)
+listener()
 
 thread2=Process(target=detect)
-
 thread2.start()
 #detect()
 while(1):
     plot()
 
-'''
-print("\nstart getListenerData")
-pointer=getListenerData()
-array_pointer = ctypes.cast(pointer, ctypes.POINTER(ArrayType))
-data= np.frombuffer(array_pointer.contents,dtype=np.int32)
-print(data)
-print("start plot")
-plt.plot(range(len(data)),data)
-plt.savefig(datetime.datetime.now().isoformat()+".jpeg")
-plt.show()
-'''
+
 
 
 

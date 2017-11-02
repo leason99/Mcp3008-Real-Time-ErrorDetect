@@ -18,14 +18,14 @@ init=mcp3008.init
 getListenerData=mcp3008.getListenerData
 getListenerData.restype=ctypes.POINTER(ctypes.c_int32)
 
-ArrayType = ctypes.c_int32*50000
+ArrayType = ctypes.c_int32*50000*3
 
 
 
 listener=mcp3008.listener
 detect=mcp3008.detect
 
-DataBuf=(ctypes.c_int*50000)()
+DataBuf=(ctypes.c_int*50000*3)()
 DataBuf_point=ctypes.cast(DataBuf, ctypes.POINTER(ctypes.c_int))
 
 #ipcrm --all=msg
@@ -37,11 +37,28 @@ def plot():
     print("pointer:",pointer.contents)
     array_pointer = ctypes.cast(pointer, ctypes.POINTER(ArrayType))
     data= np.frombuffer(array_pointer.contents,dtype=np.int32)
+    res=np.reshape(data,(3,50000)) 
     print(data)
     print("start plot")
-    plt.plot(range(len(data)),data)
+    
+    
+    plt.figure(figsize=(20,10))
+    plt.subplot(3, 1, 1)
+    plt.plot(range(len(res[0])), res[0])
+    plt.title('ch1')
+    #plt.ylim((0,1030))
+    
+    plt.subplot(3, 1, 2)
+    plt.plot(range(len(res[1])), res[1])
+    plt.title('ch2')
+    #plt.ylim((0,1030))
+    plt.subplot(3, 1, 3)
+    plt.plot(range(len(res[2])), res[2])
+    plt.title('ch3')
+    #plt.ylim((0,1030))
+   
     plt.savefig(datetime.datetime.now().isoformat()+".jpeg")
-    plt.cla()  
+    plt.clf()  
 
 
 init()

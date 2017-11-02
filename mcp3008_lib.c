@@ -45,7 +45,7 @@ char spidev_path[] = "/dev/spidev0.0";
 struct msg
 {
     long mtype;
-    int value[1];
+    int value[3];
 };
 struct resdata
 {
@@ -62,8 +62,6 @@ struct thread_data
 //myadd
 int abort_read;
 struct thread_data *data_point, *data_point2;
-CirQueue DataQueue;
-PointerCirQueue *PointerQueue;
 void register_sig_handler();
 void sigint_handler(int sig);
 void show_elapsed(struct timeval *start, struct timeval *end, int count);
@@ -80,9 +78,7 @@ void init()
     printf("int: %d  int*: %d", sizeof(int), sizeof(int *));
     mkfifo("data", 0555);
     
-    PointerQueue = malloc(sizeof(PointerCirQueue));
-    initCirQueue(&DataQueue);
-    initCirQueue(PointerQueue);
+    
     data_point2 = malloc(sizeof(struct thread_data));
     data_point2->count = 0;
     data_point2->len = sizeof(struct resdata) - sizeof(long);
@@ -95,140 +91,9 @@ void init()
     printf("\ndata_point2 qid:%d  | data_point21 qid:%d", data_point2->qid, data_point->qid);
     Py_RETURN_NONE;
 }
-void listenerData(int *rs)
-{
 
-    struct resdata *lsd;
-    lsd = malloc(sizeof(struct resdata));
-    lsd->mtype = 10;
-    int code = 0;
-    printf("\ndata_point2 qid:%d  | data_point21 qid:%d", data_point2->qid, data_point->qid);
-    printf("\nlsd mtype:%d  | data_point2->len:%d", lsd->mtype, data_point2->len);
-    int qid = data_point2->qid;
-    int len = data_point2->len;
-    int pipe = open("data", O_RDONLY);
-    printf("R pipe:%d",pipe);
-    while (read(pipe, lsd->value, 4) <= 0)
-    {
-        printf("\nwhile");
-        sleep(1);
-        //code = msgrcv(data_point2->qid , lsd, len, 10, 0);
-        /*
-        printf("\nmsgrcv code:%d", code);
-        //printf("\nlsd->value:%p", lsd->value[0]);
-
-        if (code < 0)
-        {
-            printf("\nError\n");
-        }
-        else if (code > 0)
-        {
-            //int *rs;
-            char *r = &rs;
-            int x;
-            for (x = 0; x < 4; x++)
-            {
-
-                *(r + x) = lsd->value[x];
-            }
-            printf("rs address %p",rs);
-            
-            return ;
-        }
-
-
-        else
-        {
-            printf("\nelse_code:%d", code);
-        }*/
-    }
-    char *r = &rs;
-    int x;
-
-    for (x = 0; x < 4; x++)
-    {
-
-        *(r + x) = lsd->value[x];
-    }
-    printf("rs address %p",rs);
-
-    return;
-
-    pthread_exit(NULL);
-}
 int *getListenerData()
-{ /*printf("PointerQueueAddress:%p",PointerQueue);
-    while (1)
-    {
-        int **pointer;
-        if (PointerQueue->count>0)
-        {
-            printf("deletePointerQueue");
-            deleteCirQueue(PointerQueue, *pointer);
-
-                return *pointer;
-        }
-        else
-        {
-
-            sleep(1);
-            printf("empty");
-        }
-    }
-
-    return NULL;
-*/
- /*   int *rs;
-    pthread_t id;
-    if (pthread_create(&id, NULL, (void *)listenerData, rs) < 0)
-    {
-        perror("detect thread creat error");
-        exit(1);
-    }
-    printf("creat getListenerData ");
-    pthread_join(id, NULL);
-*/
-    /*
-    struct resdata *lsd;
-    lsd = malloc(sizeof(struct resdata));
-    lsd->mtype = 10;
-    int code = 0;
-    printf("\ndata_point2 qid:%d  | data_point21 qid:%d", data_point2->qid, data_point->qid);
-    printf("\nlsd mtype:%d  | data_point2->len:%d", lsd->mtype, data_point2->len);
-    int qid = data_point2->qid;
-    int len = data_point2->len;
-    while (1)
-    {
-        printf("\nwhile");
-
-        code = msgrcv(qid, lsd, len, 10, 0);
-
-        printf("\nmsgrcv code:%d", code);
-        //printf("\nlsd->value:%p", lsd->value[0]);
-
-        if (code < 0)
-        {
-            printf("\nError\n");
-        }
-        else if (code > 0)
-        
-        {
-            int *rs;
-            char *r = &rs;
-            int x;
-            for (x = 0; x < 4; x++)
-            {
-
-                *(r + x) = lsd->value[x];
-            }
-            return rs;
-        }
-
-        else
-        {
-            printf("\nelse_code:%d", code);
-        }
-    }*/
+{
     struct resdata *lsd;
     lsd = malloc(sizeof(struct resdata));
     lsd->mtype = 10;
@@ -243,35 +108,7 @@ int *getListenerData()
     {
         printf("\nwhile");
         
-        //code = msgrcv(data_point2->qid , lsd, len, 10, 0);
-        /*
-        printf("\nmsgrcv code:%d", code);
-        //printf("\nlsd->value:%p", lsd->value[0]);
-
-        if (code < 0)
-        {
-            printf("\nError\n");
-        }
-        else if (code > 0)
-        {
-            //int *rs;
-            char *r = &rs;
-            int x;
-            for (x = 0; x < 4; x++)
-            {
-
-                *(r + x) = lsd->value[x];
-            }
-            printf("rs address %p",rs);
-            
-            return ;
-        }
-
-
-        else
-        {
-            printf("\nelse_code:%d", code);
-        }*/
+        
     }
     int *rs;
     char *r = &rs;
@@ -303,7 +140,7 @@ void listener(int *listenerData_point)
         perror("listener thread creat error");
         exit(1);
     }
-    //pthread_join(id,NULL);
+    
 
     Py_RETURN_NONE;
 }
@@ -352,16 +189,21 @@ void detect(PyObject *self)
 }
 
 void recValue(int *listenerData_point)
-{
+{   int limit=700;
     printf("\nrecValue");
     
     int  pipe = open("data", O_WRONLY);
     printf("W pipe:%d",pipe);
-    CirQueue q;
+    CirQueue q[3];
+    
     int item = 0;
     int count = 0;
     int achieve = 0;
-    initCirQueue(&q);
+
+    initCirQueue(&q[0]);
+    initCirQueue(&q[1]);
+    initCirQueue(&q[2]);
+    
     struct msg *pmsg;
     pmsg = malloc(sizeof(struct msg));
     pmsg->mtype = 1;
@@ -390,40 +232,45 @@ void recValue(int *listenerData_point)
             }
             else
             {
-                if (pmsg->value[0] > 500)
+                if (pmsg->value[0] > limit | pmsg->value[1] >limit | pmsg->value[2] > limit)
                 {
                     achieve = 1;
                 }
             }
 
-            if (isFull(&q) == 1)
+            if (isFull(&q[0]) == 1)
             {
-                deleteCirQueue(&q, &item);
+                deleteCirQueue(&q[0], &item);
+                deleteCirQueue(&q[1], &item);
+                deleteCirQueue(&q[2], &item);
             }
 
-            insertCirQueue(&q, pmsg->value[0]);
+            insertCirQueue(&q[0], pmsg->value[0]);
+            insertCirQueue(&q[1], pmsg->value[1]);
+            insertCirQueue(&q[2], pmsg->value[2]);
             //insertCirQueue(&q, 1);
-            if (count >= 25000 & q.count==50000)
+            if (count >= 25000 & q[0].count==50000)
             {
-                FILE *fp = fopen("test", "wb");
+                
 
                 achieve = 0;
                 count = 0;
                 int w = 0;
-                int item_num = q.count;
-                int *Databuf = malloc(sizeof(int) * 50000);
-                //printf("\n count :%d", q.count);
+                int item_num = q[0].count;
+                int *Databuf = malloc(sizeof(int) * 50000*3);
+                //printf("\n count :%d", q[0].count);
+                int i=0;
+                for(i=0;i<3;i++){
                 for (w = 0; w < item_num; w++)
                 {
-                    deleteCirQueue(&q, Databuf + w);
-
-                    fprintf(fp, "%d,", *(Databuf + w));
-                    //printf("delet:%d",*(listenerData_point+w));
-                    //printf("\ni:%d cout: %d empty: %d |aderss: %d",w,q.count,isEmpty(&q),listenerData_point[w]);
+                    deleteCirQueue(&q[i], Databuf + w+ (i*50000));  
                 }
+            
+            
+            }
 
-                fclose(fp);
-                printf("\ni:%d cout: %d empty: %d |value: %d", w, q.count, isEmpty(&q), *(Databuf + w - 1));
+            
+                printf("\ni:%d cout: %d empty: %d |value: %d", w, q[0].count, isEmpty(&q), *(Databuf + w - 1));
                 char *c = &Databuf;
                 int x = 0;
                 for (x = 0; x < 4; x++)
@@ -435,8 +282,7 @@ void recValue(int *listenerData_point)
                 //int code = msgsnd(data_point2->qid , lsd, data_point2->len, 0);
                 //printf("send %d", code);
 
-                //PointerinsertCirQueue(PointerQueue, Databuf);
-                //printf("PointerQueue count: %d",PointerQueue->count);
+                
                 sleep(2);
             }
         }
@@ -449,7 +295,7 @@ void recValue(int *listenerData_point)
 void loop()
 {
     int speed = 3600000;
-    int blocks = 1;
+    int blocks = 3;
     int ch = 0;
     int i;
     //annotation count for thread
@@ -491,7 +337,8 @@ void loop()
 
     for (i = 0; i < blocks; i++)
     {
-        tx[i * 4] = 0x60 | (ch << 2);
+       // tx[i * 4] = 0x60 | (ch << 2);
+        tx[i * 4] = 0x60 | (i << 2);
         tr[i].tx_buf = (unsigned long)&tx[i * 4];
         tr[i].rx_buf = (unsigned long)&rx[i * 4];
         tr[i].len = 3;
@@ -523,7 +370,18 @@ void loop()
             perror("ioctl");
             goto loop_done;
         }
-        pmsg->value[0] = (((int)rx[1] << 2) | (rx[2] >> 6));
+        
+        for(i=0;i<blocks;i++){
+        pmsg->value[i] = (((int)rx[1+(i * 4)] << 2) | (rx[2+(i * 4)] >> 6));
+        
+       }
+       //printf("ch1: %d ch2: %d ch3: %d ",pmsg->value[0],pmsg->value[1],pmsg->value[2]);
+
+
+
+
+
+
         //printf("\n%d",pmsg->value[0]);
         if (msgsnd(data_point->qid, pmsg, data_point->len, 0) < 0)
         {

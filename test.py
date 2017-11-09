@@ -42,13 +42,13 @@ def plot():
     print(data)
     print("start plot")
     
-   
+    plt.figure(figsize=(20,10))
     for i in range(chnum):
-        plt.figure(figsize=(20,10))
+        
         plt.subplot(chnum, 1, i+1)
         plt.plot(range(len(res[i])), res[i])
         plt.title('ch{}'.format(i))
-        #plt.ylim((0,1030))
+        plt.ylim((0,1030))
     
     plt.savefig(datetime.datetime.now().isoformat()+".jpeg")
     plt.clf()  
@@ -63,10 +63,11 @@ listener()
 thread2=Process(target=detect)
 thread2.start()
 #detect()
+'''
 while(1):
     plot()
 
-
+'''
 
 
 

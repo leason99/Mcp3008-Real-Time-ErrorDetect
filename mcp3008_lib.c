@@ -76,7 +76,7 @@ int *getListenerData();
 void init()
 {
     printf("int: %d  int*: %d", sizeof(int), sizeof(int *));
-    mkfifo("/tmp/data", 0555);
+   //mkfifo("/tmp/data", 0555);
 
     data_point = malloc(sizeof(struct thread_data));
     data_point->count = 0;
@@ -172,8 +172,8 @@ void detect(PyObject *self)
 void recValue()
 {
 
-    int pipe = open("/tmp/data", O_WRONLY);
-    printf("recValue write pipe:%d", pipe);
+    //int pipe = open("/tmp/data", O_WRONLY);
+    //printf("recValue write pipe:%d", pipe);
     CirQueue q[3];
     int item = 0;
     int count = 0;
@@ -185,10 +185,12 @@ void recValue()
     initCirQueue(&q[1]);
     initCirQueue(&q[2]);
 
-    struct msg *pmsg;
+    struct msg 
+    *pmsg;
     pmsg = malloc(sizeof(struct msg));
     pmsg->mtype = 1;
-
+    FILE *dataFile;
+    mkdir("./data", 0777);
     while (1)
     {
         int code = msgrcv(data_point->qid, pmsg, data_point->len, 1, 0);
@@ -209,8 +211,15 @@ void recValue()
             else
             {
                 if (pmsg->value[0] > limit | pmsg->value[1] > limit | pmsg->value[2] > limit)
-                {
-                    achieve = 1;
+                {   achieve = 1;
+                    
+                    char text[100];
+                    time_t now = time(NULL);
+                    struct tm *t = localtime(&now);
+                    strftime(text, sizeof(text)-1, "./data/%d %m %Y %H:%M:%S.txt", t);
+                    dataFile=fopen(text,"w");
+
+                    
                 }
             }
 
@@ -240,19 +249,29 @@ void recValue()
                     for (w = 0; w < samples; w++)
                     {
                         deleteCirQueue(&q[i], Databuf + w + (i * samples));
+                        
+                        int value=*(Databuf + w + (i * samples));
+                        fprintf(dataFile, "%d,",value );
+                        //printf( "%d,",value);
+                        //fprintf(dataFile, "sdfdsf,");
+
                     }
                 }
-
+                fclose(dataFile);
+                dataFile=NULL;
                 printf("\ni:%d cout: %d empty: %d |value: %d", w, q[0].count, isEmpty(&q), *(Databuf + w - 1));
                 char *c = &Databuf;
                 for (i = 0; i < 4; i++)
                 {
                     value[i] = *(c + i);
                 }
-                write(pipe, value, 4);
+                //write(pipe, value, 4);
+                
+               
+               
                 printf("address %p", Databuf);
-
-                sleep(2);
+                free(Databuf);
+                //sleep(2);
             }
         }
         else

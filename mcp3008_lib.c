@@ -45,7 +45,8 @@ char spidev_path[] = "/dev/spidev0.0";
 struct msg
 {
     long mtype;
-    int value[3];
+    int value[5];
+    // ch1,ch2,ch3,sec,usec
 };
 struct thread_data
 {
@@ -56,27 +57,43 @@ struct thread_data
 
 //glob argument
 int limit = 700;
+int detectionTimes = 0;
 int samples = 50000;
 int chnum = 3;
+FILE *dataFile;
+//myadd
 
-    //myadd
-    int abort_read;
+int abort_read;
+struct timeval start, end;
+int abort_rec;
+
+pthread_t listenerId;
+pthread_t detectId;
+
 struct thread_data *data_point;
+typedef void (*Func)();
+void stop();
 void register_sig_handler();
 void sigint_handler(int sig);
-void show_elapsed(struct timeval *start, struct timeval *end, int count);
+double show_elapsed(struct timeval *start, struct timeval *end, int count);
 //int loop(int speed, int blocks, int ch);
 void loop();
 void recValue();
-
 void listener();
 void init();
 int *getListenerData();
 
-void init()
+void init(int Limit)
+
 {
+    printf("%d", Limit);
+    limit = Limit;
+    detectionTimes = 0;
+    abort_read = 0;
+    abort_rec = 0;
+    register_sig_handler();
     printf("int: %d  int*: %d", sizeof(int), sizeof(int *));
-   //mkfifo("/tmp/data", 0555);
+    //mkfifo("/tmp/data", 0555);
 
     data_point = malloc(sizeof(struct thread_data));
     data_point->count = 0;
@@ -105,7 +122,6 @@ int *getListenerData()
 
     for (x = 0; x < 4; x++)
     {
-
         *(r + x) = value[x];
     }
 
@@ -117,8 +133,8 @@ int *getListenerData()
 void listener()
 {
     printf("start listener");
-    pthread_t id;
-    if (pthread_create(&id, NULL, (void *)recValue, NULL) < 0)
+
+    if (pthread_create(&listenerId, NULL, (void *)recValue, NULL) < 0)
     {
         perror("listener thread creat error");
         exit(1);
@@ -130,13 +146,12 @@ void listener()
 void detect(PyObject *self)
 {
     int opt, blocks, ch, speed, i;
-    struct timeval start, end;
+
     //myadd
     pthread_t id;
-
     struct msg pmsg;
     //myadd
-    register_sig_handler();
+
     blocks = 1;
     ch = 0;
     speed = 3600000;
@@ -144,31 +159,32 @@ void detect(PyObject *self)
     if (gettimeofday(&start, NULL) < 0)
     {
         perror("gettimeofday: start");
-        Py_RETURN_NONE;
     }
     //my code
-    if (pthread_create(&id, NULL, (void *)loop, NULL) < 0)
+    detectId = pthread_create(&id, NULL, (void *)loop, NULL);
+    if (detectId < 0)
     {
         perror("detect thread creat error");
         exit(1);
     }
 
-    pthread_join(id, NULL);
+    //pthread_join(id, NULL);
 
     //mycode
 
-    if (data_point->count > 0)
-    {
-        if (gettimeofday(&end, NULL) < 0)
-            perror("gettimeofday: end");
-
-        else
-            show_elapsed(&start, &end, data_point->count);
-    }
     printf("\ndetect return");
-    Py_RETURN_NONE;
+}
+void stop()
+{
+
+    raise(SIGINT);
+    //pthread_cancel(detectId);
 }
 
+int getDetectionTimes()
+{
+    return detectionTimes;
+}
 void recValue()
 {
 
@@ -179,30 +195,31 @@ void recValue()
     int count = 0;
     int achieve = 0;
     char value[4];
-    int i=0;
+    int i = 0;
     int w = 0;
+    int partialSamples = 0;
+
+    struct timeval startPoint, endPoint;
     initCirQueue(&q[0]);
     initCirQueue(&q[1]);
     initCirQueue(&q[2]);
 
-    struct msg 
-    *pmsg;
+    struct msg
+        *pmsg;
     pmsg = malloc(sizeof(struct msg));
     pmsg->mtype = 1;
-    FILE *dataFile;
     mkdir("./data", 0777);
-    while (1)
+    while (!abort_rec)
     {
         int code = msgrcv(data_point->qid, pmsg, data_point->len, 1, 0);
 
         if (code < 0)
         {
             printf("rcv error");
-            //exit(1);
+            sleep(2);
         }
         else if (code > 0)
         {
-            //printf("%u",pmsg->value[0]);
 
             if (achieve)
             {
@@ -211,64 +228,81 @@ void recValue()
             else
             {
                 if (pmsg->value[0] > limit | pmsg->value[1] > limit | pmsg->value[2] > limit)
-                {   achieve = 1;
-                    
+                {
+                    achieve = 1;
+                    detectionTimes = detectionTimes + 1;
                     char text[100];
                     time_t now = time(NULL);
                     struct tm *t = localtime(&now);
-                    strftime(text, sizeof(text)-1, "./data/%d %m %Y %H:%M:%S.txt", t);
-                    dataFile=fopen(text,"w");
+                    strftime(text, sizeof(text) - 1, "./data/%d %m %Y %H:%M:%S.txt", t);
+                    dataFile = fopen(text, "w");
+                    startPoint.tv_sec = pmsg->value[3];
+                    startPoint.tv_usec = pmsg->value[4];
 
-                    
+                    if (q[0].count == samples)
+                    {
+                        partialSamples = samples / 2;
+                        
+                    }
+                    else
+                    {
+                        partialSamples = samples - q[0].count;
+                        
+                    }
                 }
             }
 
             if (isFull(&q[0]) == 1)
             {
-                for (i=0;i<chnum;i++){
+                for (i = 0; i < chnum; i++)
+                {
                     deleteCirQueue(&q[i], &item);
                 }
             }
-            for (i=0;i<chnum;i++){
+            for (i = 0; i < chnum; i++)
+            {
                 insertCirQueue(&q[i], pmsg->value[i]);
             }
-            
+
             //insertCirQueue(&q, 1);
             if (count >= samples / 2 & q[0].count == samples)
             {
-                //reset   
+                //reset
                 achieve = 0;
                 count = 0;
 
-                
+                endPoint.tv_sec = pmsg->value[3];
+                endPoint.tv_usec = pmsg->value[4];
+
                 int *Databuf = malloc(sizeof(int) * samples * chnum);
                 //printf("\n count :%d", q[0].count);
-                
+
                 for (i = 0; i < chnum; i++)
                 {
                     for (w = 0; w < samples; w++)
                     {
                         deleteCirQueue(&q[i], Databuf + w + (i * samples));
-                        
-                        int value=*(Databuf + w + (i * samples));
-                        fprintf(dataFile, "%d,",value );
+
+                        int value = *(Databuf + w + (i * samples));
+                        fprintf(dataFile, "%d,", value);
                         //printf( "%d,",value);
                         //fprintf(dataFile, "sdfdsf,");
-
                     }
                 }
+                double samplerate = show_elapsed(&startPoint, &endPoint, partialSamples);
+                fprintf(dataFile, "%f", samplerate);
+
                 fclose(dataFile);
-                dataFile=NULL;
+                dataFile = NULL;
                 printf("\ni:%d cout: %d empty: %d |value: %d", w, q[0].count, isEmpty(&q), *(Databuf + w - 1));
                 char *c = &Databuf;
                 for (i = 0; i < 4; i++)
                 {
                     value[i] = *(c + i);
                 }
+
                 //write(pipe, value, 4);
-                
-               
-               
+
                 printf("address %p", Databuf);
                 free(Databuf);
                 //sleep(2);
@@ -277,8 +311,10 @@ void recValue()
         else
         {
             printf("\nno message");
+            sleep(1);
         }
     }
+    //deleteFailFile();
 }
 void loop()
 {
@@ -346,10 +382,10 @@ void loop()
         printf("%s\n", spidev_path);
         goto loop_done;
     }
-
+    struct timeval instantTime;
     while (!abort_read)
     {
-
+        pthread_testcancel();
         if (ioctl(fd, SPI_IOC_MESSAGE(blocks), tr) < 0)
         {
             perror("ioctl");
@@ -360,7 +396,9 @@ void loop()
         {
             pmsg->value[i] = (((int)rx[1 + (i * 4)] << 2) | (rx[2 + (i * 4)] >> 6));
         }
-
+        gettimeofday(&instantTime, NULL);
+        pmsg->value[3] = instantTime.tv_sec;
+        pmsg->value[4] = instantTime.tv_usec;
         //printf("ch1: %d ch2: %d ch3: %d ",pmsg->value[0],pmsg->value[1],pmsg->value[2]);
 
         if (msgsnd(data_point->qid, pmsg, data_point->len, 0) < 0)
@@ -382,13 +420,14 @@ loop_done:
         free(tx);
     if (tr)
         free(tr);
+    //msgctl(data_point->qid, IPC_RMID, NULL);
 
     return;
 }
 
 // We know the diff is never going to be that big so don't worry
 // about wrapping issues.
-void show_elapsed(struct timeval *start, struct timeval *end, int count)
+double show_elapsed(struct timeval *start, struct timeval *end, int count)
 {
     double diff;
     double rate;
@@ -414,6 +453,8 @@ void show_elapsed(struct timeval *start, struct timeval *end, int count)
 
     printf("Summary\n  Elapsed: %0.2lf seconds\n    Reads: %d\n     Rate: %0.2lf Hz\n\n",
            diff, count, rate);
+
+    return rate;
 }
 
 void register_sig_handler()
@@ -433,6 +474,71 @@ void register_sig_handler()
 void sigint_handler(int sig)
 {
     abort_read = 1;
+    if (data_point->qid != NULL)
+    {
+        if (data_point->count > 0)
+        {
+            if (gettimeofday(&end, NULL) < 0)
+                perror("gettimeofday: end");
+
+            else
+                show_elapsed(&start, &end, data_point->count);
+        }
+        sleep(1);
+        //deleteFailFile();
+        struct msqid_ds ds;
+
+        while (1)
+        {
+            if ((msgctl(data_point->qid, IPC_STAT, &ds)) < 0)
+            {
+                printf("msgctl讀取錯誤。n");
+            }
+
+            if (ds.msg_qnum == 0)
+            {
+
+                abort_rec = 1;
+                break;
+            }
+        }
+
+        if ((msgctl(data_point->qid, IPC_RMID, NULL)) < 0)
+        {
+            printf("msgctl刪除錯誤。n");
+        }
+        else
+        {
+            data_point->qid = NULL;
+        }
+
+        deleteFailFile();
+    }
+}
+
+void deleteFailFile()
+{
+
+    if (dataFile != NULL)
+    {
+
+        char proclnk[255];
+        char *filepath = malloc(255);
+        ssize_t r;
+        int fno = fileno(dataFile);
+        sprintf(proclnk, "/proc/self/fd/%d", fno);
+        r = readlink(proclnk, filepath, 255);
+        if (r < 0)
+        {
+            printf("failed to readlink\n");
+            exit(1);
+        }
+        filepath[r] = '\0';
+        printf(filepath);
+        remove(filepath);
+        fclose(dataFile);
+        free(filepath);
+    }
 }
 void freeme(int *ptr)
 {

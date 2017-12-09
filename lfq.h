@@ -2,20 +2,20 @@
 #ifndef LFQ
 #define LFQ
 
-#define MAX 50000
+#define LFQMAXSize 50000
 typedef struct 
 {
    int front   ;
    int rear    ;
    int count   ;
-   int ele[MAX]    ;
+   int ele[LFQMAXSize]    ;
 }CirQueue;
 typedef struct 
 {
    int front   ;
    int rear    ;
    int count   ;
-   int *ele[MAX]    ;
+   int *ele[LFQMAXSize]    ;
 }PointerCirQueue;
 
 

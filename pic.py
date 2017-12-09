@@ -8,7 +8,7 @@ from tqdm import tqdm, trange
 
 
      
-def generate(self):
+def generate():
     chnum=3
     samples=50000
     if not os.path.exists("./pic"):

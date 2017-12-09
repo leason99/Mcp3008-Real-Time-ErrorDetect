@@ -17,7 +17,7 @@ int isFull(CirQueue * q)
 {
    int full=0;
     
-   if(q->count == MAX)
+   if(q->count == LFQMAXSize)
        full = 1;   
 
    return full;
@@ -43,7 +43,7 @@ void insertCirQueue(CirQueue * q, int item)
        return;
    }
     
-   q->rear = (q->rear+1)%MAX;
+   q->rear = (q->rear+1)%LFQMAXSize;
    q->ele[q->rear] = item;
     
    q->count++;
@@ -61,7 +61,7 @@ void PointerinsertCirQueue(CirQueue * q, int* item)
        return;
    }
     
-   q->rear = (q->rear+1)%MAX;
+   q->rear = (q->rear+1)%LFQMAXSize;
    q->ele[q->rear] = item;
     printf("\nadress: %p",q->ele[q->rear]);
    q->count++;
@@ -82,7 +82,7 @@ int deleteCirQueue(CirQueue * q, int *item)
 
    *item    = q->ele[q->front];
 
-   q->front = (q->front+1)%MAX;
+   q->front = (q->front+1)%LFQMAXSize;
     
    q->count--;
 

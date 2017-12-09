@@ -1,0 +1,91 @@
+# -*- coding: utf-8 -*-
+
+# Form implementation generated from reading ui file './ui/MainWindows.ui'
+#
+# Created by: PyQt5 UI code generator 5.9.1
+#
+# WARNING! All changes made in this file will be lost!
+
+from PyQt5 import QtCore, QtGui, QtWidgets
+
+class Ui_MainWindow(object):
+    def setupUi(self, MainWindow):
+        MainWindow.setObjectName("MainWindow")
+        MainWindow.resize(734, 531)
+        self.centralwidget = QtWidgets.QWidget(MainWindow)
+        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Fixed)
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(self.centralwidget.sizePolicy().hasHeightForWidth())
+        self.centralwidget.setSizePolicy(sizePolicy)
+        self.centralwidget.setObjectName("centralwidget")
+        self.horizontalLayoutWidget = QtWidgets.QWidget(self.centralwidget)
+        self.horizontalLayoutWidget.setGeometry(QtCore.QRect(10, 0, 721, 481))
+        self.horizontalLayoutWidget.setObjectName("horizontalLayoutWidget")
+        self.horizontalLayout = QtWidgets.QHBoxLayout(self.horizontalLayoutWidget)
+        self.horizontalLayout.setSizeConstraint(QtWidgets.QLayout.SetNoConstraint)
+        self.horizontalLayout.setContentsMargins(0, 0, 0, 0)
+        self.horizontalLayout.setObjectName("horizontalLayout")
+        self.verticalLayout_2 = QtWidgets.QVBoxLayout()
+        self.verticalLayout_2.setSizeConstraint(QtWidgets.QLayout.SetMinAndMaxSize)
+        self.verticalLayout_2.setObjectName("verticalLayout_2")
+        self.ShowHistory = QtWidgets.QPushButton(self.horizontalLayoutWidget)
+        self.ShowHistory.setEnabled(True)
+        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Minimum)
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(self.ShowHistory.sizePolicy().hasHeightForWidth())
+        self.ShowHistory.setSizePolicy(sizePolicy)
+        self.ShowHistory.setMinimumSize(QtCore.QSize(50, 0))
+        self.ShowHistory.setMaximumSize(QtCore.QSize(130, 16777215))
+        self.ShowHistory.setBaseSize(QtCore.QSize(0, 0))
+        self.ShowHistory.setObjectName("ShowHistory")
+        self.verticalLayout_2.addWidget(self.ShowHistory)
+        self.DetectInstant = QtWidgets.QPushButton(self.horizontalLayoutWidget)
+        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Maximum, QtWidgets.QSizePolicy.Minimum)
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(self.DetectInstant.sizePolicy().hasHeightForWidth())
+        self.DetectInstant.setSizePolicy(sizePolicy)
+        self.DetectInstant.setMinimumSize(QtCore.QSize(50, 0))
+        self.DetectInstant.setMaximumSize(QtCore.QSize(130, 16777215))
+        self.DetectInstant.setBaseSize(QtCore.QSize(50, 50))
+        self.DetectInstant.setObjectName("DetectInstant")
+        self.verticalLayout_2.addWidget(self.DetectInstant)
+        self.DetectError = QtWidgets.QPushButton(self.horizontalLayoutWidget)
+        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Minimum)
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(self.DetectError.sizePolicy().hasHeightForWidth())
+        self.DetectError.setSizePolicy(sizePolicy)
+        self.DetectError.setMinimumSize(QtCore.QSize(50, 0))
+        self.DetectError.setMaximumSize(QtCore.QSize(130, 16777215))
+        self.DetectError.setBaseSize(QtCore.QSize(50, 50))
+        self.DetectError.setObjectName("DetectError")
+        self.verticalLayout_2.addWidget(self.DetectError)
+        self.horizontalLayout.addLayout(self.verticalLayout_2)
+        self.mainui = QtWidgets.QHBoxLayout()
+        self.mainui.setSizeConstraint(QtWidgets.QLayout.SetMaximumSize)
+        self.mainui.setObjectName("mainui")
+        self.horizontalLayout.addLayout(self.mainui)
+        self.horizontalLayout.setStretch(0, 3)
+        self.horizontalLayout.setStretch(1, 10)
+        MainWindow.setCentralWidget(self.centralwidget)
+        self.menubar = QtWidgets.QMenuBar(MainWindow)
+        self.menubar.setGeometry(QtCore.QRect(0, 0, 734, 22))
+        self.menubar.setObjectName("menubar")
+        MainWindow.setMenuBar(self.menubar)
+        self.statusbar = QtWidgets.QStatusBar(MainWindow)
+        self.statusbar.setObjectName("statusbar")
+        MainWindow.setStatusBar(self.statusbar)
+
+        self.retranslateUi(MainWindow)
+        QtCore.QMetaObject.connectSlotsByName(MainWindow)
+
+    def retranslateUi(self, MainWindow):
+        _translate = QtCore.QCoreApplication.translate
+        MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow"))
+        self.ShowHistory.setText(_translate("MainWindow", "show history "))
+        self.DetectInstant.setText(_translate("MainWindow", "Detect Instant"))
+        self.DetectError.setText(_translate("MainWindow", "Detect Error"))
+

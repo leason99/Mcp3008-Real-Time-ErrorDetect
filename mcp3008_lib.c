@@ -39,8 +39,14 @@ DEALINGS IN THE SOFTWARE.
 #include <sys/ipc.h>
 #include <numpy/arrayobject.h>
 #include "lfq.h"
+#include <mongoc.h>
 
 char spidev_path[] = "/dev/spidev0.0";
+const char *uri_str = "mongodb://192.168.1.171:27017";
+mongoc_client_t *client;
+mongoc_database_t *database;
+mongoc_collection_t *collection;
+
 //myadd
 struct msg
 {
@@ -101,7 +107,11 @@ void init(int Limit)
     data_point->qid = msgget(IPC_PRIVATE, IPC_CREAT | 0666);
 
     printf("\n data_point1 qid:%d", data_point->qid);
-    Py_RETURN_NONE;
+    
+    client = mongoc_client_new(uri_str);
+    mongoc_client_set_appname(client, "connect-example");
+    database = mongoc_client_get_database(client, "mcp3008");
+    collection = mongoc_client_get_collection(client, "mcp3008", "device1");
 }
 
 int *getListenerData()
@@ -187,6 +197,10 @@ int getDetectionTimes()
 }
 void recValue()
 {
+    bson_t  *document, child;
+    char buf[16];
+    const char *key;
+    bson_error_t error;
 
     //int pipe = open("/tmp/data", O_WRONLY);
     //printf("recValue write pipe:%d", pipe);
@@ -204,8 +218,7 @@ void recValue()
     initCirQueue(&q[1]);
     initCirQueue(&q[2]);
 
-    struct msg
-        *pmsg;
+    struct msg *pmsg;
     pmsg = malloc(sizeof(struct msg));
     pmsg->mtype = 1;
     mkdir("./data", 0777);
@@ -238,16 +251,16 @@ void recValue()
                     dataFile = fopen(text, "w");
                     startPoint.tv_sec = pmsg->value[3];
                     startPoint.tv_usec = pmsg->value[4];
+                    document = bson_new();
 
+                    BSON_APPEND_DATE_TIME(document, "time", now);
                     if (q[0].count == samples)
                     {
                         partialSamples = samples / 2;
-                        
                     }
                     else
                     {
                         partialSamples = samples - q[0].count;
-                        
                     }
                 }
             }
@@ -276,20 +289,30 @@ void recValue()
 
                 int *Databuf = malloc(sizeof(int) * samples * chnum);
                 //printf("\n count :%d", q[0].count);
-
+                BSON_APPEND_ARRAY_BEGIN(document, "languages", &child);
                 for (i = 0; i < chnum; i++)
                 {
                     for (w = 0; w < samples; w++)
                     {
+
                         deleteCirQueue(&q[i], Databuf + w + (i * samples));
 
                         int value = *(Databuf + w + (i * samples));
                         fprintf(dataFile, "%d,", value);
-                        //printf( "%d,",value);
-                        //fprintf(dataFile, "sdfdsf,");
+
+                        int keylen = bson_uint32_to_string(w + (i * samples), &key, buf, sizeof buf);
+                        bson_append_int32(&child, key, (int)keylen, value);
                     }
                 }
+                bson_append_array_end(document, &child);
+
                 double samplerate = show_elapsed(&startPoint, &endPoint, partialSamples);
+                BSON_APPEND_DOUBLE(document, "samplerate", samplerate);
+                if (!mongoc_collection_insert(collection, MONGOC_INSERT_NONE, document, NULL, &error))
+                {
+                    fprintf(stderr, "%s\n", error.message);
+                }
+                bson_destroy(document);
                 fprintf(dataFile, "%f", samplerate);
 
                 fclose(dataFile);
@@ -513,6 +536,17 @@ void sigint_handler(int sig)
         }
 
         deleteFailFile();
+        
+        
+
+
+        /*
+    * Release our handles and clean up libmongoc
+    */
+        mongoc_collection_destroy(collection);
+        mongoc_database_destroy(database);
+        mongoc_client_destroy(client);
+        mongoc_cleanup();
     }
 }
 

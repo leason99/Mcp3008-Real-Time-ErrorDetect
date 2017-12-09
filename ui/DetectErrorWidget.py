@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'window.ui'
+# Form implementation generated from reading ui file './ui/DetectErrorWidget.ui'
 #
 # Created by: PyQt5 UI code generator 5.9.1
 #
@@ -8,23 +8,15 @@
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 
-class Ui_MainWindow(object):
-    def setupUi(self, MainWindow):
-        MainWindow.setObjectName("MainWindow")
-        MainWindow.resize(620, 528)
-        self.centralwidget = QtWidgets.QWidget(MainWindow)
-        self.centralwidget.setObjectName("centralwidget")
-        self.verticalLayoutWidget = QtWidgets.QWidget(self.centralwidget)
-        #self.verticalLayoutWidget.setGeometry(QtCore.QRect(20, 30, 500, 500))
+class Ui_Form(object):
+    def setupUi(self, Form):
+        Form.setObjectName("Form")
+        Form.resize(425, 434)
+        self.verticalLayoutWidget = QtWidgets.QWidget(Form)
+        self.verticalLayoutWidget.setGeometry(QtCore.QRect(20, 10, 381, 391))
         self.verticalLayoutWidget.setObjectName("verticalLayoutWidget")
-        
-        self.horizontalLayout = QtWidgets.QHBoxLayout(self.verticalLayoutWidget)
-        self.horizontalLayout.setContentsMargins(0, 0, 0, 0)
-        self.horizontalLayout.setObjectName("horizontalLayout_4")
-
-        
-        self.verticalLayout_4 = QtWidgets.QVBoxLayout()
-        #self.verticalLayout_4.setContentsMargins(0, 0, 0, 0)
+        self.verticalLayout_4 = QtWidgets.QVBoxLayout(self.verticalLayoutWidget)
+        self.verticalLayout_4.setContentsMargins(0, 0, 0, 0)
         self.verticalLayout_4.setObjectName("verticalLayout_4")
         self.horizontalLayout_7 = QtWidgets.QHBoxLayout()
         self.horizontalLayout_7.setObjectName("horizontalLayout_7")
@@ -72,35 +64,27 @@ class Ui_MainWindow(object):
         self.generateButton.setObjectName("generateButton")
         self.verticalLayout_4.addWidget(self.generateButton)
         self.fileList = QtWidgets.QListWidget(self.verticalLayoutWidget)
+        self.fileList.setEnabled(True)
+        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(self.fileList.sizePolicy().hasHeightForWidth())
+        self.fileList.setSizePolicy(sizePolicy)
         self.fileList.setObjectName("fileList")
         self.verticalLayout_4.addWidget(self.fileList)
 
-        self.horizontalLayout.addLayout(self.verticalLayout_4)
+        self.retranslateUi(Form)
+        QtCore.QMetaObject.connectSlotsByName(Form)
 
-
-
-
-        MainWindow.setCentralWidget(self.centralwidget)
-        self.menubar = QtWidgets.QMenuBar(MainWindow)
-        self.menubar.setGeometry(QtCore.QRect(0, 0, 620, 22))
-        self.menubar.setObjectName("menubar")
-        MainWindow.setMenuBar(self.menubar)
-        self.statusbar = QtWidgets.QStatusBar(MainWindow)
-        self.statusbar.setObjectName("statusbar")
-        MainWindow.setStatusBar(self.statusbar)
-
-        self.retranslateUi(MainWindow)
-        QtCore.QMetaObject.connectSlotsByName(MainWindow)
-
-    def retranslateUi(self, MainWindow):
+    def retranslateUi(self, Form):
         _translate = QtCore.QCoreApplication.translate
-        MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow"))
-        self.limit.setText(_translate("MainWindow", "limit"))
-        self.pushButton.setText(_translate("MainWindow", "set"))
-        self.statusButton.setText(_translate("MainWindow", "start"))
-        self.label.setText(_translate("MainWindow", "Time:"))
-        self.elapsed.setText(_translate("MainWindow", "0:00:00"))
-        self.label_5.setText(_translate("MainWindow", "Detected"))
-        self.detectionTimes.setText(_translate("MainWindow", "0"))
-        self.generateButton.setText(_translate("MainWindow", "Generate Image "))
+        Form.setWindowTitle(_translate("Form", "Form"))
+        self.limit.setText(_translate("Form", "limit"))
+        self.pushButton.setText(_translate("Form", "set"))
+        self.statusButton.setText(_translate("Form", "start"))
+        self.label.setText(_translate("Form", "Time:"))
+        self.elapsed.setText(_translate("Form", "0:00:00"))
+        self.label_5.setText(_translate("Form", "Detected"))
+        self.detectionTimes.setText(_translate("Form", "0"))
+        self.generateButton.setText(_translate("Form", "Generate Image "))
 

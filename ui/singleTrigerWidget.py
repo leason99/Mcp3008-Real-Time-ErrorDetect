@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file './ui/DetectErrorWidget.ui'
+# Form implementation generated from reading ui file './ui/singleTrigerWidget.ui'
 #
 # Created by: PyQt5 UI code generator 5.9.1
 #
@@ -11,9 +11,9 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_Form(object):
     def setupUi(self, Form):
         Form.setObjectName("Form")
-        Form.resize(433, 489)
+        Form.resize(813, 626)
         self.verticalLayoutWidget = QtWidgets.QWidget(Form)
-        self.verticalLayoutWidget.setGeometry(QtCore.QRect(20, 10, 381, 462))
+        self.verticalLayoutWidget.setGeometry(QtCore.QRect(20, 10, 600, 462))
         self.verticalLayoutWidget.setObjectName("verticalLayoutWidget")
         self.verticalLayout_4 = QtWidgets.QVBoxLayout(self.verticalLayoutWidget)
         self.verticalLayout_4.setContentsMargins(0, 0, 0, 0)

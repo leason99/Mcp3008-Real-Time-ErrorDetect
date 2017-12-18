@@ -12,5 +12,5 @@ pyui:
 	pyuic5  ./ui/DetectErrorWidget.ui -o ./ui/DetectErrorWidget.py 
 	pyuic5  ./ui/ShowHistoryWidget.ui -o ./ui/ShowHistoryWidget.py
 	pyuic5  ./ui/MainWindows.ui -o ./ui/MainWindows.py 
-	
+	pyuic5  ./ui/singleTrigerWidget.ui -o ./ui/singleTrigerWidget.py 
 

@@ -29,6 +29,7 @@ DEALINGS IN THE SOFTWARE.
 #include <sys/ioctl.h>
 #include <time.h>
 #include <sys/time.h>
+#include <sys/stat.h>
 
 #include <getopt.h>
 #include <errno.h>
@@ -40,7 +41,8 @@ DEALINGS IN THE SOFTWARE.
 #include <numpy/arrayobject.h>
 #include "lfq.h"
 #include <mongoc.h>
-
+#include <sys/types.h>  
+#include <unistd.h>
 char spidev_path[] = "/dev/spidev0.0";
 const char *uri_str = "mongodb://192.168.1.171:27017";
 mongoc_client_t *client;
@@ -62,17 +64,23 @@ struct thread_data
 };
 
 //glob argument
-int limit = 700;
+int ch1limit = 700;
+int ch2limit = 700;
+
+int ch3limit = 700;
+
 int detectionTimes = 0;
 int samples = 50000;
 int chnum = 3;
+int usechnum = 0;
+
 FILE *dataFile;
 //myadd
-
+int *singleTrigerbuf;
 int abort_read;
 struct timeval start, end;
 int abort_rec;
-
+int recValueOnceIsend;
 pthread_t listenerId;
 pthread_t detectId;
 
@@ -88,12 +96,31 @@ void recValue();
 void listener();
 void init();
 int *getListenerData();
-
-void init(int Limit)
+int  recValueOnceIsEnd();
+void recValueOnce();
+void listenerOnce();
+int * getSingleTrigerBuf();
+void init(int ch1Limit,int ch2Limit,int ch3Limit)
 
 {
-    printf("%d", Limit);
-    limit = Limit;
+    printf("ch1:%d  ch2: %d  ch3: %d", ch1Limit,ch2Limit,ch3Limit);
+    ch1limit = ch1Limit;
+    ch2limit = ch2Limit;
+    ch3limit = ch3Limit;
+    usechnum = 0;
+    if (ch1limit!=2000){
+        usechnum=usechnum+1;
+    }
+    if (ch2limit!=2000){
+        usechnum=usechnum+1;
+    }
+    if (ch3limit!=2000){
+        usechnum=usechnum+1;
+    }
+
+
+
+
     detectionTimes = 0;
     abort_read = 0;
     abort_rec = 0;
@@ -153,6 +180,23 @@ void listener()
     Py_RETURN_NONE;
 }
 
+
+void listenerOnce()
+{
+    printf("start listenerOnce");
+    recValueOnceIsend=0;
+    if (pthread_create(&listenerId, NULL, (void *)recValueOnce, NULL) < 0)
+    {
+        perror("listener thread creat error");
+        exit(1);
+    }
+
+    Py_RETURN_NONE;
+}
+
+
+
+
 void detect(PyObject *self)
 {
     int opt, blocks, ch, speed, i;
@@ -195,6 +239,158 @@ int getDetectionTimes()
 {
     return detectionTimes;
 }
+int  recValueOnceIsEnd(){
+
+    return recValueOnceIsend;
+
+}
+int * getSingleTrigerBuf(){
+
+    return singleTrigerbuf;
+
+}
+void recValueOnce()
+{
+    char buf[16];
+    const char *key;
+
+    //int pipe = open("/tmp/data", O_WRONLY);
+    //printf("recValue write pipe:%d", pipe);
+    CirQueue q[3];
+    int item = 0;
+    int count = 0;
+    int achieve = 0;
+    char value[4];
+    int i = 0;
+    int w = 0;
+    int partialSamples = 0;
+
+    struct timeval startPoint, endPoint;
+    initCirQueue(&q[0]);
+    initCirQueue(&q[1]);
+    initCirQueue(&q[2]);
+
+    struct msg *pmsg;
+    pmsg = malloc(sizeof(struct msg));
+    pmsg->mtype = 1;
+    mkdir("./data", 0777);
+    chown("./data",getuid,getgid);
+    while (!abort_rec)
+    {
+        int code = msgrcv(data_point->qid, pmsg, data_point->len, 1, 0);
+
+        if (code < 0)
+        {
+            printf("rcv error");
+            sleep(2);
+        }
+        else if (code > 0)
+        {
+
+            if (achieve)
+            {
+                count++;
+            }
+            else
+            {
+                if (pmsg->value[0] > ch1limit | pmsg->value[1] > ch2limit | pmsg->value[2] > ch3limit)
+                {
+                    achieve = 1;
+                    detectionTimes = detectionTimes + 1;
+                    char text[100];
+                    time_t now = time(NULL);
+                    struct tm *t = localtime(&now);
+                    strftime(text, sizeof(text) - 1, "./data/%d %m %Y %H:%M:%S.txt", t);
+                    //dataFile = fopen(text, "w");
+                    startPoint.tv_sec = pmsg->value[3];
+                    startPoint.tv_usec = pmsg->value[4];
+                    
+                    //document = bson_new();
+                    //BSON_APPEND_DATE_TIME(document, "time", now);
+                    if (q[0].count == samples)
+                    {
+                        partialSamples = samples / 2;
+                    }
+                    else
+                    {
+                        partialSamples = samples - q[0].count;
+                    }
+                }
+            }
+
+            if (isFull(&q[0]) == 1)
+            {
+                for (i = 0; i < chnum; i++)
+                {
+                    deleteCirQueue(&q[i], &item);
+                }
+            }
+            for (i = 0; i < chnum; i++)
+            {
+                insertCirQueue(&q[i], pmsg->value[i]);
+            }
+
+            //insertCirQueue(&q, 1);
+            if (count >= samples / 2 & q[0].count == samples)
+            {
+                //reset
+                achieve = 0;
+                count = 0;
+
+                endPoint.tv_sec = pmsg->value[3];
+                endPoint.tv_usec = pmsg->value[4];
+
+                singleTrigerbuf = malloc(sizeof(int) * samples * chnum);
+                //printf("\n count :%d", q[0].count);
+                //BSON_APPEND_ARRAY_BEGIN(document, "languages", &child);
+                for (i = 0; i < chnum; i++)
+                {
+                    for (w = 0; w < samples; w++)
+                    {
+
+                        deleteCirQueue(&q[i], singleTrigerbuf + w + (i * samples));
+
+                        int value = *(singleTrigerbuf + w + (i * samples));
+                        // printf("\n count :%d", q[0].count);
+
+                      
+                    }
+                 
+
+                }
+
+                double samplerate = show_elapsed(&startPoint, &endPoint, partialSamples);
+            
+
+              
+
+                printf("\ni:%d cout: %d empty: %d |value: %d", w, q[0].count, isEmpty(&q), *(singleTrigerbuf + w - 1));
+                char *c = &singleTrigerbuf;
+                for (i = 0; i < 4; i++)
+                {
+                    value[i] = *(c + i);
+                }
+                
+
+                //write(pipe, value, 4);
+                recValueOnceIsend=1;
+                printf("address %p", singleTrigerbuf);
+                raise(SIGINT);
+
+                break;
+                //sleep(2);
+            }
+        }
+        else
+        {
+            printf("\nno message");
+            sleep(1);
+        }
+    }
+}
+
+
+
 void recValue()
 {
     bson_t  *document, child;
@@ -240,7 +436,7 @@ void recValue()
             }
             else
             {
-                if (pmsg->value[0] > limit | pmsg->value[1] > limit | pmsg->value[2] > limit)
+                if (pmsg->value[0] > ch1limit | pmsg->value[1] > ch2limit | pmsg->value[2] > ch3limit)
                 {
                     achieve = 1;
                     detectionTimes = detectionTimes + 1;
@@ -249,11 +445,14 @@ void recValue()
                     struct tm *t = localtime(&now);
                     strftime(text, sizeof(text) - 1, "./data/%d %m %Y %H:%M:%S.txt", t);
                     dataFile = fopen(text, "w");
+                    chmod(text,0777);
+                    chown(text,getuid,getgid);
+
                     startPoint.tv_sec = pmsg->value[3];
                     startPoint.tv_usec = pmsg->value[4];
-                    document = bson_new();
-
-                    BSON_APPEND_DATE_TIME(document, "time", now);
+                    
+                    //document = bson_new();
+                    //BSON_APPEND_DATE_TIME(document, "time", now);
                     if (q[0].count == samples)
                     {
                         partialSamples = samples / 2;
@@ -289,7 +488,7 @@ void recValue()
 
                 int *Databuf = malloc(sizeof(int) * samples * chnum);
                 //printf("\n count :%d", q[0].count);
-                BSON_APPEND_ARRAY_BEGIN(document, "languages", &child);
+                //BSON_APPEND_ARRAY_BEGIN(document, "languages", &child);
                 for (i = 0; i < chnum; i++)
                 {
                     for (w = 0; w < samples; w++)
@@ -300,22 +499,27 @@ void recValue()
                         int value = *(Databuf + w + (i * samples));
                         fprintf(dataFile, "%d,", value);
 
-                        int keylen = bson_uint32_to_string(w + (i * samples), &key, buf, sizeof buf);
-                        bson_append_int32(&child, key, (int)keylen, value);
+                        //int keylen = bson_uint32_to_string(w + (i * samples), &key, buf, sizeof buf);
+                       // bson_append_int32(&child, key, (int)keylen, value);
                     }
+                    fprintf(dataFile, "\n", value);
+
                 }
-                bson_append_array_end(document, &child);
+                //bson_append_array_end(document, &child);
 
                 double samplerate = show_elapsed(&startPoint, &endPoint, partialSamples);
-                BSON_APPEND_DOUBLE(document, "samplerate", samplerate);
+                //BSON_APPEND_DOUBLE(document, "samplerate", samplerate);
+               /*
                 if (!mongoc_collection_insert(collection, MONGOC_INSERT_NONE, document, NULL, &error))
                 {
                     fprintf(stderr, "%s\n", error.message);
-                }
-                bson_destroy(document);
+                }*/
+                //bson_destroy(document);
+
                 fprintf(dataFile, "%f", samplerate);
 
                 fclose(dataFile);
+
                 dataFile = NULL;
                 printf("\ni:%d cout: %d empty: %d |value: %d", w, q[0].count, isEmpty(&q), *(Databuf + w - 1));
                 char *c = &Databuf;
@@ -342,9 +546,13 @@ void recValue()
 void loop()
 {
     int speed = 3600000;
-    int blocks = chnum;
+    int blocks = usechnum;
     int ch = 0;
     int i;
+
+   
+
+
     //annotation count for thread
     //int count = 0;
     int fd = 0;
@@ -356,6 +564,30 @@ void loop()
     pmsg = malloc(sizeof(struct msg));
     pmsg->mtype = 1;
     //myadd
+
+     int chnumber[usechnum];
+     i=0;
+    if (ch1limit !=2000)
+    {
+        chnumber[i]= 0;
+        i++;
+    }
+    if (ch2limit !=2000)
+    {
+        chnumber[i]= 1;
+        i++;
+    }
+    if (ch3limit !=2000)
+    {
+        chnumber[i]= 2;
+        i++;
+    }
+    i=0;
+
+        
+
+
+
     tr = (struct spi_ioc_transfer *)malloc(blocks * sizeof(struct spi_ioc_transfer));
     if (!tr)
     {
@@ -379,10 +611,13 @@ void loop()
     memset(tx, 0, blocks);
     memset(rx, 0, blocks);
 
+
+
+
     for (i = 0; i < blocks; i++)
     {
         // tx[i * 4] = 0x60 | (ch << 2);
-        tx[i * 4] = 0x60 | (i << 2);
+        tx[i * 4] = 0x60 | (chnumber[i] << 2);;
         tr[i].tx_buf = (unsigned long)&tx[i * 4];
         tr[i].rx_buf = (unsigned long)&rx[i * 4];
         tr[i].len = 3;
@@ -417,7 +652,7 @@ void loop()
 
         for (i = 0; i < blocks; i++)
         {
-            pmsg->value[i] = (((int)rx[1 + (i * 4)] << 2) | (rx[2 + (i * 4)] >> 6));
+            pmsg->value[chnumber[i]] = (((int)rx[1 + (i * 4)] << 2) | (rx[2 + (i * 4)] >> 6));
         }
         gettimeofday(&instantTime, NULL);
         pmsg->value[3] = instantTime.tv_sec;
@@ -510,7 +745,7 @@ void sigint_handler(int sig)
         sleep(1);
         //deleteFailFile();
         struct msqid_ds ds;
-
+/*
         while (1)
         {
             if ((msgctl(data_point->qid, IPC_STAT, &ds)) < 0)
@@ -534,6 +769,8 @@ void sigint_handler(int sig)
         {
             data_point->qid = NULL;
         }
+*/
+        abort_rec = 1;
 
         deleteFailFile();
         
@@ -542,11 +779,11 @@ void sigint_handler(int sig)
 
         /*
     * Release our handles and clean up libmongoc
-    */
+    *//*
         mongoc_collection_destroy(collection);
         mongoc_database_destroy(database);
         mongoc_client_destroy(client);
-        mongoc_cleanup();
+        mongoc_cleanup();*/
     }
 }
 
@@ -565,13 +802,15 @@ void deleteFailFile()
         if (r < 0)
         {
             printf("failed to readlink\n");
-            exit(1);
-        }
+            //exit(1);
+        }else{
         filepath[r] = '\0';
         printf(filepath);
         remove(filepath);
         fclose(dataFile);
-        free(filepath);
+        dataFile=NULL;
+        //free(filepath);
+    }
     }
 }
 void freeme(int *ptr)

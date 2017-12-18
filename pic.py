@@ -6,32 +6,53 @@ matplotlib.use("Pdf")
 import matplotlib.pyplot as plt
 from tqdm import tqdm, trange
 
-
+import shutil
      
 def generate():
     chnum=3
     samples=50000
     if not os.path.exists("./pic"):
-        os.mkdir("./pic")
+        os.mkdir("./pic",mode=0o777)
+        shutil.chown("./pic", user="pi", group="pi")
+    if not os.path.exists("./data"):
+        os.mkdir("./data",mode=0o777)
+        shutil.chown("./data", user="pi", group="pi")
     fileList=os.listdir("./data")
     bar=tqdm(fileList)
+    
     for x,filename in enumerate( fileList):
         
-        #print("\n",filename)
+        print("\n",filename)
         file=open("./data/{}".format(filename),mode='r')
-        Str=file.readline()
+        Str=file.read()
 
 
 
         #data=np.array([int(n) for n in Str.split(",")[:-1]],dtype=int)
-        strData= Str.split(",")
-        data=np.array([int(n) for n in strData[:-1]],dtype=int)
 
-        samplerate=strData[-1]
+
+        strData= Str.split("\n")
+        chnum=len(strData)-1
+        data=np.array([int(n) for x in strData[:-1] for n in x.split(",")[:-1]  ],dtype=int)
+        print(data.shape)
+        print(int (data.shape[0]/chnum))
+        res=data.reshape(chnum,int (data.shape[0]/chnum))
+        #print(data)
+        
+      
+        print(chnum)
+        samplerate=strData[chnum]
+        print(samplerate)
+
+
+
         #data struct [ch][samples]
-        res=np.reshape(data,(chnum,samples)) 
+        #res=np.reshape(data,(chnum,samples)) 
+        #res=data
+        print(res.shape)
+
         plt.figure(figsize=(20,10))
-        plt.suptitle("samplerate: {}".format(strData[-1]))
+        plt.suptitle("samplerate: {}".format(samplerate))
         bar.set_description("\rgenerator pic for {}  ".format(filename))
         bar.update(1)
         
@@ -39,14 +60,14 @@ def generate():
             
         
             plt.subplot(chnum, 1, i+1)
-            plt.plot(range(len(res[i])), res[i])
+            plt.plot(range(res[i].shape[0]), res[i])
             plt.title('ch{}'.format(i))
             plt.ylim((0,1030))
 
         plt.savefig("./pic/{}.jpeg".format(filename))
+        shutil.chown("./pic/{}.jpeg".format(filename), user="pi", group="pi")
         plt.close('all')
 
 
 if __name__ == "__main__":
-    picGenerator=PicGenerator()
-    picGenerator.generate()
+    generate() 
